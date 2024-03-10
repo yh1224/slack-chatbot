@@ -2,7 +2,8 @@
   "app": "npx ts-node --prefer-ts-exts bin/slack-chatbot.ts",
   "watch": {
     "include": [
-      "**"
+      "**",
+      "../../src/**"
     ],
     "exclude": [
       "README.md",
