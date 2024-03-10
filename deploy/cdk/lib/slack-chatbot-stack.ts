@@ -37,7 +37,10 @@ export class SlackChatbotStack extends cdk.Stack {
             timeout: cdk.Duration.minutes(1),
         });
         slackChatbotFunction.addToRolePolicy(new iam.PolicyStatement({
-            actions: ["bedrock:InvokeModel"],
+            actions: [
+                "bedrock:InvokeModel",
+                "bedrock:Retrieve",
+            ],
             resources: ["*"],
         }));
         // for Lazy listener

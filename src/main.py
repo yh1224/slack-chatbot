@@ -2,9 +2,10 @@ import json
 import logging
 import os
 
-from langchain.chains import ConversationChain
+from langchain.chains import ConversationChain, RetrievalQA
 from langchain.memory import ConversationBufferMemory
-from langchain_community.llms.bedrock import Bedrock
+from langchain_community.chat_models import BedrockChat
+from langchain_community.retrievers import AmazonKnowledgeBasesRetriever
 from langchain_openai import ChatOpenAI
 from slack_bolt import App, Ack, Say
 from slack_bolt.adapter.aws_lambda import SlackRequestHandler
@@ -75,22 +76,46 @@ def handle_app_mentions(event, say: Say, logger: logging.Logger):
                 memory.save_context({"input": inputs}, {"output": outputs})
                 inputs = outputs = ""
             inputs += text
+    retriever = None
     if CHATGPT_SETTINGS:
         logging.debug(f"Using ChatGPT: {CHATGPT_SETTINGS}")
         settings = json.loads(CHATGPT_SETTINGS)
-        llm = ChatOpenAI(api_key=settings["apiKey"], model=settings["model"])
+        llm = ChatOpenAI(
+            api_key=settings["apiKey"],
+            model=settings["model"],
+        )
     elif BEDROCK_SETTINGS:
         logging.debug(f"Using Bedrock: {BEDROCK_SETTINGS}")
         settings = json.loads(BEDROCK_SETTINGS)
-        llm = Bedrock(model_id=settings["model"])
+        llm = BedrockChat(model_id=settings["model"])
+        if "kb" in settings:
+            retriever = AmazonKnowledgeBasesRetriever(
+                knowledge_base_id=settings["kb"],
+                retrieval_config={
+                    "vectorSearchConfiguration": {
+                        "numberOfResults": 4
+                    }
+                }
+            )
     else:
         raise ValueError("No model settings")
-    conversation = ConversationChain(
-        llm=llm,
-        verbose=True,
-        memory=memory,
-    )
-    result = conversation.predict(input=inputs)
+    if retriever:
+        chain = RetrievalQA.from_chain_type(
+            llm=llm,
+            chain_type="stuff",
+            retriever=retriever,
+            verbose=True,
+            memory=memory,
+        )
+        res = chain.invoke({"query": inputs})
+        result = res["result"]
+    else:
+        conversation = ConversationChain(
+            llm=llm,
+            verbose=True,
+            memory=memory,
+        )
+        result = conversation.predict(input=inputs)
 
     # reply
     say(channel=channel_id, thread_ts=event_ts, text=result)

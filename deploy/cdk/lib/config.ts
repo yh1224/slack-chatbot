@@ -21,6 +21,7 @@ export type Config = {
 
     readonly bedrock?: {
         readonly model: string;
+        readonly kb?: string;
     };
 }
 

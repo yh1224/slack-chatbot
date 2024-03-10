@@ -29,4 +29,7 @@ chatGpt:
 
 # Amazon Bedrock
 bedrock:
-  model: anthropic.claude-v2:1
+  # Model ID
+  model: "anthropic.claude-v2:1"
+  # [OPTIONAL] Knowledge base ID
+  kb: XXXXXXXXXX
